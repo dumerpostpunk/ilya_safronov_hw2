@@ -47,10 +47,14 @@ def prepare():
             c.execute(psycopg.sql.SQL('CREATE DATABASE {}').format(psycopg.sql.Identifier(URL.database)))
     subprocess.run([sys.executable, '-m', 'scripts.seed', '--size', 'large'], cwd=ROOT, env=ENV, check=True, stdout=subprocess.DEVNULL)
     with psycopg.connect(DSN, autocommit=True) as c:
+        booked = list(c.execute(f'SELECT id,slot_id FROM "{SCHEMA}".appointments WHERE status=\'booked\' ORDER BY id'))
+        occupied = {row[1] for row in booked}
+        free = [row[0] for row in c.execute(f'SELECT id FROM "{SCHEMA}".slots ORDER BY id LIMIT 10000') if row[0] not in occupied][:5000]
+        if len(free) != 5000: raise RuntimeError('Insufficient free fixture slots')
         fixtures = {
             'card_ids': [r[0] for r in c.execute(f'SELECT id FROM "{SCHEMA}".appointments ORDER BY id LIMIT 100')],
-            'booked_ids': [r[0] for r in c.execute(f'SELECT id FROM "{SCHEMA}".appointments WHERE status=\'booked\' ORDER BY id LIMIT 5000')],
-            'free_slot_ids': [r[0] for r in c.execute(f'SELECT s.id FROM "{SCHEMA}".slots s WHERE NOT EXISTS (SELECT 1 FROM "{SCHEMA}".appointments a WHERE a.slot_id=s.id AND a.status=\'booked\') ORDER BY s.id LIMIT 5000')],
+            'booked_ids': [r[0] for r in booked[:5000]],
+            'free_slot_ids': free,
         }
     save(ROOT / '.runtime/fixtures.json', fixtures)
 
@@ -139,7 +143,9 @@ def stage(server, mode, rate, duration=30, name=None, profile=False, workers=1):
     if profile:
         time.sleep(4)
         spy_log = (RESULTS/f'{name}_pyspy.txt').open('w', encoding='utf-8')
-        spy = subprocess.Popen([str(SPY),'record','--pid',str(server.pid),'--duration','20','--rate','100','--idle','--threads','--format','speedscope','--output',str(RESULTS/f'{name}_profile.json')], cwd=ROOT, stdout=spy_log, stderr=subprocess.STDOUT)
+        processes = [psutil.Process(server.pid)] + psutil.Process(server.pid).children(recursive=True)
+        target = max(processes, key=lambda p: p.memory_info().rss)
+        spy = subprocess.Popen([str(SPY),'record','--pid',str(target.pid),'--duration','20','--rate','100','--idle','--threads','--format','speedscope','--output',str(RESULTS/f'{name}_profile.json')], cwd=ROOT, stdout=spy_log, stderr=subprocess.STDOUT)
     returncode = proc.wait(timeout=duration+45)
     stop.set(); thread.join(timeout=10); output.close()
     if spy is not None:
