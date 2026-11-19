@@ -1,0 +1,16 @@
+{
+  "scope": "localhost; same laptop model and CPU as HW1, OS reports 23.71 GiB RAM versus 7.71 GiB in HW1 report",
+  "database": "ilya_safronov_hw2",
+  "code_commit": "7c3b329cc9bea1f8e9f47002a9a1f4ee5c3aed5d",
+  "physical_cores": 8,
+  "test_account": "demo",
+  "schema": "ilya_safronov",
+  "source_hw1_commit": "53fb76096839f644131f29e1bc2ae2e27f41b636",
+  "k6_version": "2.4.0",
+  "cpu": "12th Gen Intel(R) Core(TM) i5-12450H",
+  "logical_cores": 12,
+  "port": 8020,
+  "model": "Katana 17 B12UCR",
+  "ram_bytes": 25459068928,
+  "py_spy_version": "0.4.4"
+}

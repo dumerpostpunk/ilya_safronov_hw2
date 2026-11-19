@@ -1,0 +1,9 @@
+﻿operation,repeats,avg_http_ms,p50_ms,p95_ms,max_ms,avg_sql_ms,avg_non_sql_ms,avg_sql_count
+GET /api/appointments?page=1&size=20,30,43.666,35.09,63.776,67.854,15.146,28.521,62.0
+GET /api/appointments/1178,30,18.117,11.583,36.875,41.19,1.202,16.915,4.0
+GET /api/specialists,30,16.921,9.368,40.193,44.222,0.443,16.478,1.0
+GET /api/services,30,18.163,16.286,37.698,41.345,0.443,17.72,1.0
+GET /api/slots?service_id=1&date=2026-10-12,30,139.312,132.147,191.542,195.847,102.875,36.437,102.0
+GET /api/summary?start_date=2026-10-12,30,132.293,115.341,221.147,228.445,108.126,24.167,3.0
+POST /api/appointments,30,32.171,30.514,43.248,47.633,5.496,26.675,7.0
+POST /api/appointments/{id}/cancel,30,22.756,25.183,38.076,42.643,1.9,20.856,6.0

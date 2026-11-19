@@ -19,6 +19,7 @@ APP_PORT=8020
 py -3.14 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
+New-Item -ItemType Directory -Force .runtime | Out-Null
 python -m scripts.seed --size large
 python -m scripts.run
 ```
@@ -29,8 +30,8 @@ python -m scripts.run
 
 ```powershell
 python -m load.run --mode all
-python -m load.run --mode profile --rate ЧАСТОТА_ТЯЖЁЛОЙ_ОПЕРАЦИИ
-python -m load.run --mode tuning --rate ЧАСТОТА_ИЗЛОМА
+python -m load.run --mode profile --rate 16
+python -m load.run --mode tuning --rate 32
 ```
 
 `all` выполняет смешанный и тяжёлый сценарии ступенями 1, 2, 4, 8 … запросов/с, по 30 секунд, до первого нарушения p95 < 500 мс или ошибок < 1 %. Перед каждой ступенью заново наполняется только `ilya_safronov_hw2`; основная БД ДЗ № 1 не затрагивается. Между ступенями проверяется возврат CPU к простою. В `tuning` проверяется тяжёлая операция с двумя workers, в остальных режимах — с одним; после выхода сервер останавливается.
@@ -44,7 +45,21 @@ k6 run -e MODE=mixed -e RATE=8 -e DURATION=30s -e BASE_URL=http://127.0.0.1:8020
 
 Для неё сервер запускается отдельно. Для одиночной нагрузки `MODE=heavy`: сводка, самая тяжёлая операция по p95 ДЗ № 1. Все запросы авторизованы; проверка учётной записи выполняется в `setup` вне учитываемых метрик. Одна итерация — один HTTP-запрос. Смешанный профиль: список 30 %, карточка 20 %, слоты 15 %, специалисты и услуги по 10 %, сводка, создание и отмена по 5 %. Обоснования: [load/profile.json](load/profile.json). 409 создания и отмены считаются ожидаемыми отказами.
 
-Результаты — `load/results/`: сводки k6, сжатые исходные точки, CPU/RSS и соединения PostgreSQL раз в 1–2 секунды, профили py-spy. CPU приложения и PostgreSQL указан в процентах одного ядра, RSS — сумма RSS процессов, включая общие страницы. Итоговый отчёт — `report/REPORT_DZ2.docx`.
+Результаты — [load/results/](load/results/): `stages.csv`, `resources.csv`, `operations.csv`, профиль функций, журнал 40 пройденных тестов. Исходные точки k6, сводки, логи всех 19 прогонов, два профиля py-spy и SQL-планы собраны в `raw_data.zip`. Для повторной проверки распаковать его в `load/results/` и выполнить `python -m load.analyze`. CPU приложения и PostgreSQL указан в процентах одного ядра, RSS — сумма RSS процессов, включая общие страницы. Интервал мониторинга — 1–2 с.
+
+В основной серии последний проходящий порог: смешанный профиль 32 запрос/с, сводка 16 запрос/с. Повторная сводка на 32 запрос/с прошла порог; влияние состояния процесса, профилировщика и workers разобрано в [отчёте](report/REPORT_DZ2.docx). Графики — [screenshots/](screenshots/).
+
+Парный опыт с workers (выполнить как Python-код из корня проекта; для сводки заменить `mixed, 64` на `heavy, 32`):
+
+```python
+from load.run import start_server, stage, stop_server
+for workers in (1, 2):
+    server = start_server(workers)
+    try:
+        stage(server, 'mixed', 64, name=f'workers_{workers}_mixed', workers=workers)
+    finally:
+        stop_server(server)
+```
 
 ## API
 
